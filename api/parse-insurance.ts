@@ -1,12 +1,30 @@
+import formidable from "formidable";
+import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
+
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
 });
 
-export const config = {
-    runtime: "nodejs",
-};
+function parseForm(req: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const form = formidable({
+            multiples: false,
+            keepExtensions: true,
+        });
+
+        form.parse(req, (err, fields, files) => {
+            if (err) reject(err);
+            else resolve({ fields, files });
+        });
+    });
+}
 
 export default async function handler(req: any, res: any) {
     if (req.method !== "POST") {
@@ -17,21 +35,28 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-        const formData = await req.formData();
+        const { files } = await parseForm(req);
 
-        const file = formData.get("file") as File;
+        const uploadedFile = files.file;
 
-        if (!file) {
+        if (!uploadedFile) {
             return res.status(400).json({
                 success: false,
                 error: "No file uploaded",
             });
         }
 
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const fileObj = Array.isArray(uploadedFile)
+            ? uploadedFile[0]
+            : uploadedFile;
 
-        const utf8Name = file.name;
+        const buffer = fs.readFileSync(fileObj.filepath);
+
+        const utf8Name =
+            fileObj.originalFilename || "unknown";
+
+        const mimeType =
+            fileObj.mimetype || "application/pdf";
 
         const prompt = `
 Analyze this insurance document and extract the required fields.
@@ -83,7 +108,7 @@ Return JSON only.
                         {
                             inlineData: {
                                 data: buffer.toString("base64"),
-                                mimeType: file.type,
+                                mimeType: mimeType,
                             },
                         },
                     ],
@@ -143,7 +168,7 @@ Return JSON only.
 
         return res.status(500).json({
             success: false,
-            error: error.message || "Unknown error",
+            error: error?.message || "Unknown error",
         });
     }
 }
