@@ -17,6 +17,49 @@ const upload = multer({
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+function normalizeDate(dateStr: string): string {
+  if (!dateStr) return "";
+  let s = dateStr.trim();
+
+  // 1. Try matching Vietnamese long format: "ngày 22 tháng 06 năm 2026" or "ngày 22 tháng 6, 2026" etc.
+  const vnMatch = s.match(/(?:ngày\s+)?(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})/i);
+  if (vnMatch) {
+    const day = vnMatch[1].padStart(2, '0');
+    const month = vnMatch[2].padStart(2, '0');
+    const year = vnMatch[3];
+    return `${day}/${month}/${year}`;
+  }
+
+  // 2. Try matching DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${day}/${month}/${year}`;
+  }
+
+  // 3. Try matching YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (ymdMatch) {
+    const year = ymdMatch[1];
+    const month = ymdMatch[2].padStart(2, '0');
+    const day = ymdMatch[3].padStart(2, '0');
+    return `${day}/${month}/${year}`;
+  }
+
+  return s;
+}
+
+function normalizeCurrency(val: string): string {
+  if (!val) return "";
+  // Strip non-digit characters
+  const cleanVal = val.replace(/[^0-9]/g, "");
+  if (!cleanVal) return val;
+  // Format with thousand separator commas
+  return Number(cleanVal).toLocaleString("en-US");
+}
+
 // The schema we want Gemini to return
 const responseSchema: Schema = {
   type: Type.OBJECT,
@@ -24,10 +67,10 @@ const responseSchema: Schema = {
     GCN_TNDS: { type: Type.STRING, description: "Số seri GCN_TNDS, thường nằm trên cùng, ví dụ TNDS2604/157973" },
     Ten_chu_xe: { type: Type.STRING, description: "Tên chủ xe" },
     Bien_kiem_soat: { type: Type.STRING, description: "Biển kiểm soát" },
-    Ngay_cap: { type: Type.STRING, description: "Ngày cấp, thường nằm gần vị trí con dấu, phía dưới bên phải" },
-    Phi_bao_hiem_chua_VAT: { type: Type.STRING, description: "Phí bảo hiểm chưa VAT (số)" },
-    VAT: { type: Type.STRING, description: "VAT (số)" },
-    Tong_phi_bao_hiem_da_VAT: { type: Type.STRING, description: "Tổng phí bảo hiểm đã VAT / thanh toán (số)" },
+    Ngay_cap: { type: Type.STRING, description: "Ngày cấp bảo hiểm (ngày cấp/ngày ký/ngày bắt đầu hiệu lực), định dạng bắt buộc dd/mm/yyyy. Ví dụ: 22/06/2026." },
+    Phi_bao_hiem_chua_VAT: { type: Type.STRING, description: "Phí bảo hiểm chưa VAT (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)'." },
+    VAT: { type: Type.STRING, description: "VAT (số), bắt buộc lấy từ dòng 'VAT:'." },
+    Tong_phi_bao_hiem_da_VAT: { type: Type.STRING, description: "Tổng phí bảo hiểm đã VAT / thanh toán (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm thanh toán (gồm VAT)'." },
     Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Nếu tên file có chữ 'HUỶ' thì là 'HUỶ', ngược lại để trống." },
     Ghi_chu: { type: Type.STRING, description: "Ghi chú, thường nằm sau biển kiểm soát trong tên file. Nếu tên file không rõ ràng thì lưu toàn bộ tên file vào đây." },
   },
@@ -56,13 +99,13 @@ Rules for filename extraction:
   Nếu tên file không rõ ràng, không thể tách trạng thái và ghi chú thì lưu toàn bộ "${utf8Name}" vào Ghi chú và để trống trạng thái.
   
 Rules for document extraction:
-- GCN_TNDS: Số seri (thường nằm trên cùng)
-- Tên chủ xe: Tên chủ xe
+- GCN_TNDS: Số seri (thường nằm trên cùng, ví dụ: TNDS2606/632467)
+- Tên chủ xe: Tên chủ xe đầy đủ
 - Biển kiểm soát: Biển kiểm soát
-- Ngày cấp: Thường nằm gần ở vị trí con dấu, phía dưới bên phải
-- Phí bảo hiểm chưa VAT
-- VAT
-- Tổng phí bảo hiểm đã VAT (thanh toán)
+- Ngày cấp: Ngày cấp bảo hiểm (ngày cấp/ngày ký/ngày bắt đầu hiệu lực bảo hiểm). BẮT BUỘC định dạng dd/mm/yyyy. Ví dụ: '22/06/2026'. Tìm ở phần chữ ký điện tử ký ngày dd/mm/yyyy hoặc góc dưới cùng bên phải.
+- Phi_bao_hiem_chua_VAT: BẮT BUỘC phải lấy số tiền từ dòng "Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)". KHÔNG lấy phí bảo hiểm riêng lẻ của mục 1 hay mục khác.
+- VAT: BẮT BUỘC phải lấy từ dòng "VAT:" hoặc "Thuế giá trị gia tăng".
+- Tong_phi_bao_hiem_da_VAT: BẮT BUỘC phải lấy từ dòng "Tổng phí bảo hiểm thanh toán (gồm VAT):".
 - Ensure numbers are formatted as raw numbers or exactly as they appear.
 `;
 
@@ -98,6 +141,21 @@ Rules for document extraction:
     }
 
     const result = JSON.parse(text);
+
+    // Apply normalization on fields
+    if (result.Ngay_cap) {
+      result.Ngay_cap = normalizeDate(result.Ngay_cap);
+    }
+    if (result.Phi_bao_hiem_chua_VAT) {
+      result.Phi_bao_hiem_chua_VAT = normalizeCurrency(result.Phi_bao_hiem_chua_VAT);
+    }
+    if (result.VAT) {
+      result.VAT = normalizeCurrency(result.VAT);
+    }
+    if (result.Tong_phi_bao_hiem_da_VAT) {
+      result.Tong_phi_bao_hiem_da_VAT = normalizeCurrency(result.Tong_phi_bao_hiem_da_VAT);
+    }
+
     // Include original filename logically
     res.json({ success: true, data: { ...result, originalFilename: utf8Name } });
 
