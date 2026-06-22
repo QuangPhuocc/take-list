@@ -36,11 +36,11 @@ export default function App() {
 
   const processQueue = async (items: InsuranceRecord[]) => {
     const concurrencyLimit = 3;
-    
+
     // Process in chunks
     for (let i = 0; i < items.length; i += concurrencyLimit) {
       const chunk = items.slice(i, i + concurrencyLimit);
-      
+
       const promises = chunk.map(async (item) => {
         if (!item.file) return;
 
@@ -62,46 +62,46 @@ export default function App() {
             try {
               const errJson = await response.json();
               if (errJson.error) errMsg = errJson.error;
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(errMsg);
           }
 
           const json = await response.json();
-          
+
           if (json.success && json.data) {
             setRecords((prev) =>
               prev.map((r) =>
                 r.id === item.id
                   ? {
-                      ...r,
-                      status: "success",
-                      GCN_TNDS: json.data.GCN_TNDS || "",
-                      Ten_chu_xe: json.data.Ten_chu_xe || "",
-                      Bien_kiem_soat: json.data.Bien_kiem_soat || "",
-                      Ngay_cap: json.data.Ngay_cap || "",
-                      Phi_bao_hiem_chua_VAT: json.data.Phi_bao_hiem_chua_VAT || "",
-                      VAT: json.data.VAT || "",
-                      Tong_phi_bao_hiem_da_VAT: json.data.Tong_phi_bao_hiem_da_VAT || "",
-                      Trang_thai: json.data.Trang_thai || "",
-                      Ghi_chu: json.data.Ghi_chu || "",
-                    }
+                    ...r,
+                    status: "success",
+                    GCN_TNDS: json.data.GCN_TNDS || "",
+                    Ten_chu_xe: json.data.Ten_chu_xe || "",
+                    Bien_kiem_soat: json.data.Bien_kiem_soat || "",
+                    Ngay_cap: json.data.Ngay_cap || "",
+                    Phi_bao_hiem_chua_VAT: json.data.Phi_bao_hiem_chua_VAT || "",
+                    VAT: json.data.VAT || "",
+                    Tong_phi_bao_hiem_da_VAT: json.data.Tong_phi_bao_hiem_da_VAT || "",
+                    Trang_thai: json.data.Trang_thai || "",
+                    Ghi_chu: json.data.Ghi_chu || "",
+                  }
                   : r
               )
             );
           } else {
-             throw new Error(json.error || "Unknown error");
+            throw new Error(json.error || "Unknown error");
           }
         } catch (error: any) {
           setRecords((prev) =>
             prev.map((r) =>
-               r.id === item.id
+              r.id === item.id
                 ? { ...r, status: "error", errorMessage: error.message }
                 : r
             )
           );
         }
       });
-      
+
       await Promise.all(promises);
     }
   };
@@ -154,7 +154,7 @@ export default function App() {
     const worksheet = xlsx.utils.json_to_sheet(dataRows);
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, "BaoHiem");
-    
+
     // Attempt auto scaling columns (basic)
     const columnWidths = [
       { wch: 5 },  // STT
@@ -180,16 +180,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
-        
+
         <header className="flex flex-col xl:flex-row items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V2</h1>
             <p className="text-sm text-slate-500 mt-1">
               Tải lên hình ảnh hoặc PDF thẻ bảo hiểm để tự động trích xuất thông tin
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-             <button
+            <button
               onClick={clearRecords}
               disabled={records.length === 0 || isProcessing}
               className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -265,13 +265,13 @@ export default function App() {
                     <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{i + 1}</td>
                       <td className="px-6 py-4 max-w-[200px] truncate" title={r.originalFilename}>
-                         <div className="flex items-center gap-2">
-                            {r.status === 'pending' && <AlertCircle className="w-4 h-4 text-slate-400" />}
-                            {r.status === 'processing' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
-                            {r.status === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
-                            {r.status === 'error' && <XCircle className="w-4 h-4 text-red-500" title={r.errorMessage} />}
-                            <span className="truncate">{r.originalFilename}</span>
-                         </div>
+                        <div className="flex items-center gap-2">
+                          {r.status === 'pending' && <AlertCircle className="w-4 h-4 text-slate-400" />}
+                          {r.status === 'processing' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                          {r.status === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                          {r.status === 'error' && <XCircle className="w-4 h-4 text-red-500" title={r.errorMessage} />}
+                          <span className="truncate">{r.originalFilename}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">{r.GCN_TNDS}</td>
                       <td className="px-6 py-4">{r.Ten_chu_xe}</td>
@@ -281,18 +281,18 @@ export default function App() {
                       <td className="px-6 py-4">{r.VAT}</td>
                       <td className="px-6 py-4 font-medium">{r.Tong_phi_bao_hiem_da_VAT}</td>
                       <td className="px-6 py-4">
-                         {r.Trang_thai && (
-                           <span className="px-2.5 py-1 text-xs font-semibold tracking-wide rounded-md bg-rose-100 text-rose-700">
-                             {r.Trang_thai}
-                           </span>
-                         )}
+                        {r.Trang_thai && (
+                          <span className="px-2.5 py-1 text-xs font-semibold tracking-wide rounded-md bg-rose-100 text-rose-700">
+                            {r.Trang_thai}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 max-w-[250px] truncate" title={r.status === 'error' ? r.errorMessage : r.Ghi_chu}>
-                         {r.status === 'error' ? (
-                             <span className="text-red-500">Lỗi trích xuất</span>
-                         ) : (
-                             r.Ghi_chu
-                         )}
+                        {r.status === 'error' ? (
+                          <span className="text-red-500">Lỗi trích xuất</span>
+                        ) : (
+                          r.Ghi_chu
+                        )}
                       </td>
                     </tr>
                   ))}
