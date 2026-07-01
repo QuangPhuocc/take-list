@@ -101,7 +101,12 @@ Rules for filename extraction:
 Rules for document extraction:
 - GCN_TNDS: Số seri (thường nằm trên cùng, ví dụ: TNDS2606/632467)
 - Tên chủ xe: Tên chủ xe đầy đủ
-- Biển kiểm soát: Biển kiểm soát
+- Biển kiểm soát: Biển kiểm soát của xe. Hãy CỰC KỲ CẨN THẬN để tránh lỗi OCR nhận diện sai chữ cái thành chữ số (hoặc ngược lại):
+  * Nhầm chữ "B" thành số "8" (Ví dụ: "81B" bị nhận diện nhầm thành "818"). Hãy đảm bảo ký tự thứ 3 của biển số thường là chữ cái.
+  * Nhầm chữ "S" thành số "5" (Ví dụ: "51S" bị nhận diện nhầm thành "515" hoặc "51").
+  * Nhầm chữ "D" thành số "0" hoặc chữ "O".
+  * Nhầm chữ "I" hoặc "L" thành số "1".
+  Hãy đối chiếu định dạng biển số xe Việt Nam chuẩn: [2 chữ số mã tỉnh] + [1 hoặc 2 chữ cái sê-ri] + [dãy số phía sau].
 - Ngày cấp: Ngày cấp bảo hiểm (ngày cấp/ngày ký/ngày bắt đầu hiệu lực bảo hiểm). BẮT BUỘC định dạng dd/mm/yyyy. Ví dụ: '22/06/2026'. Tìm ở phần chữ ký điện tử ký ngày dd/mm/yyyy hoặc góc dưới cùng bên phải.
 - Phi_bao_hiem_chua_VAT: BẮT BUỘC phải lấy số tiền từ dòng "Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)". KHÔNG lấy phí bảo hiểm riêng lẻ của mục 1 hay mục khác.
 - VAT: BẮT BUỘC phải lấy từ dòng "VAT:" hoặc "Thuế giá trị gia tăng".

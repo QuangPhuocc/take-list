@@ -35,44 +35,41 @@ export default function App() {
   }, []);
 
   const processQueue = async (items: InsuranceRecord[]) => {
-    const concurrencyLimit = 3;
+    // Process sequentially (1 by 1) to respect the 15 RPM Free Tier limit
+    for (const item of items) {
+      if (!item.file) continue;
 
-    // Process in chunks
-    for (let i = 0; i < items.length; i += concurrencyLimit) {
-      const chunk = items.slice(i, i + concurrencyLimit);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === item.id ? { ...r, status: "processing" } : r))
+      );
 
-      const promises = chunk.map(async (item) => {
-        if (!item.file) return;
+      const startTime = Date.now();
 
-        setRecords((prev) =>
-          prev.map((r) => (r.id === item.id ? { ...r, status: "processing" } : r))
-        );
+      try {
+        const formData = new FormData();
+        formData.append("file", item.file as Blob);
 
-        try {
-          const formData = new FormData();
-          formData.append("file", item.file as Blob);
+        const response = await fetch("/api/parse-insurance", {
+          method: "POST",
+          body: formData,
+        });
 
-          const response = await fetch("/api/parse-insurance", {
-            method: "POST",
-            body: formData,
-          });
+        if (!response.ok) {
+          let errMsg = "Failed to process file on server";
+          try {
+            const errJson = await response.json();
+            if (errJson.error) errMsg = errJson.error;
+          } catch (e) { }
+          throw new Error(errMsg);
+        }
 
-          if (!response.ok) {
-            let errMsg = "Failed to process file on server";
-            try {
-              const errJson = await response.json();
-              if (errJson.error) errMsg = errJson.error;
-            } catch (e) { }
-            throw new Error(errMsg);
-          }
+        const json = await response.json();
 
-          const json = await response.json();
-
-          if (json.success && json.data) {
-            setRecords((prev) =>
-              prev.map((r) =>
-                r.id === item.id
-                  ? {
+        if (json.success && json.data) {
+          setRecords((prev) =>
+            prev.map((r) =>
+              r.id === item.id
+                ? {
                     ...r,
                     status: "success",
                     GCN_TNDS: json.data.GCN_TNDS || "",
@@ -85,24 +82,28 @@ export default function App() {
                     Trang_thai: json.data.Trang_thai || "",
                     Ghi_chu: json.data.Ghi_chu || "",
                   }
-                  : r
-              )
-            );
-          } else {
-            throw new Error(json.error || "Unknown error");
-          }
-        } catch (error: any) {
-          setRecords((prev) =>
-            prev.map((r) =>
-              r.id === item.id
-                ? { ...r, status: "error", errorMessage: error.message }
                 : r
             )
           );
+        } else {
+          throw new Error(json.error || "Unknown error");
         }
-      });
+      } catch (error: any) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === item.id
+              ? { ...r, status: "error", errorMessage: error.message }
+              : r
+          )
+        );
+      }
 
-      await Promise.all(promises);
+      // Enforce a minimum interval of 4.5 seconds per file to stay under 15 RPM
+      const elapsed = Date.now() - startTime;
+      const minInterval = 4500; // 4.5 seconds
+      if (elapsed < minInterval) {
+        await new Promise((resolve) => setTimeout(resolve, minInterval - elapsed));
+      }
     }
   };
 
@@ -177,6 +178,23 @@ export default function App() {
     setRecords([]);
   };
 
+  const totalCount = records.length;
+  const completedCount = records.filter(r => r.status === "success" || r.status === "error").length;
+  const successCount = records.filter(r => r.status === "success").length;
+  const errorCount = records.filter(r => r.status === "error").length;
+  const pendingCount = records.filter(r => r.status === "pending" || r.status === "processing").length;
+  
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  
+  const estimatedSecondsLeft = pendingCount * 4.5;
+  const formatTimeRemaining = (seconds: number) => {
+    if (seconds <= 0) return "Hoàn thành";
+    if (seconds < 60) return `${Math.ceil(seconds)} giây`;
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.ceil(seconds % 60);
+    return `${mins} phút ${secs} giây`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -234,9 +252,50 @@ export default function App() {
 
         {/* Status Indicator */}
         {isProcessing && (
-          <div className="flex items-center gap-2 text-sm font-medium text-amber-600 bg-amber-50 p-4 rounded-xl border border-amber-200">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Đang xử lý dữ liệu... Vui lòng không đóng trang.
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                  Đang xử lý tài liệu bảo hiểm (Chế độ Tiết kiệm - Miễn phí)
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Mỗi file được xếp hàng xử lý giãn cách tối thiểu 4.5 giây để tránh bị nhà cung cấp API tính phí. Vui lòng giữ tab này hoạt động.
+                </p>
+              </div>
+              <div className="text-right col-span-1">
+                <span className="text-sm font-bold text-slate-800">{progressPercent}%</span>
+                <p className="text-xs text-slate-500 mt-0.5">Dự kiến còn lại: {formatTimeRemaining(estimatedSecondsLeft)}</p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${progressPercent}%` }}
+              ></div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">Tổng số file</p>
+                <p className="text-lg font-bold text-slate-800">{totalCount}</p>
+              </div>
+              <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                <p className="text-xs text-blue-600 font-medium">Đang chờ / Đang xử lý</p>
+                <p className="text-lg font-bold text-blue-700">{pendingCount}</p>
+              </div>
+              <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                <p className="text-xs text-emerald-600 font-medium">Thành công</p>
+                <p className="text-lg font-bold text-emerald-700">{successCount}</p>
+              </div>
+              <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-100/50">
+                <p className="text-xs text-rose-600 font-medium">Lỗi</p>
+                <p className="text-lg font-bold text-rose-700">{errorCount}</p>
+              </div>
+            </div>
           </div>
         )}
 
