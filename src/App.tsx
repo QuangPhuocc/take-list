@@ -257,11 +257,8 @@ export default function App() {
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                  Đang xử lý tài liệu bảo hiểm (Chế độ Tiết kiệm - Miễn phí)
+                  Đang xử lý tài liệu bảo hiểm, Vui lòng giữ tab này hoạt động.
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Mỗi file được xếp hàng xử lý giãn cách tối thiểu 4.5 giây để tránh bị nhà cung cấp API tính phí. Vui lòng giữ tab này hoạt động.
-                </p>
               </div>
               <div className="text-right col-span-1">
                 <span className="text-sm font-bold text-slate-800">{progressPercent}%</span>
