@@ -10,11 +10,11 @@ interface ConfigModalProps {
   onReset: () => void;
 }
 
-// 3 Real sample data rows from the 3 "Nạp link mẫu" URLs
+// 3 Real sample data rows from the 3 "Nạp link mẫu" URLs (Matching live extraction)
 const SAMPLE_DATA_ROWS: Record<string, string>[] = [
   {
     GCN_TNDS: "TNDS2609/795993",
-    Ten_chu_xe: "BÙI THỊ NGỌC TÚ",
+    Ten_chu_xe: "DNTN SX TM HẮNG",
     Dia_chi: "123 NGUYỄN TRÃI, TÂN AN, NINH KIỀU, CẦN THƠ",
     Dien_thoai: "0901234567",
     Bien_kiem_soat: "65A76697",
@@ -27,18 +27,18 @@ const SAMPLE_DATA_ROWS: Record<string, string>[] = [
     So_cho: "7 chỗ",
     Trong_tai: "0 tấn",
     Muc_dich_su_dung: "Không kinh doanh",
-    Ngay_hieu_luc: "16/09/2026",
-    Ngay_ket_thuc: "16/09/2027",
-    Ngay_cap: "16/09/2026",
-    Phi_bao_hiem_chua_VAT: "3,214,000",
-    VAT: "305,400",
-    Tong_phi_bao_hiem_da_VAT: "3,519,400",
-    Trang_thai: "",
+    Ngay_hieu_luc: "15/09/2026",
+    Ngay_ket_thuc: "15/09/2027",
+    Ngay_cap: "15/09/2026",
+    Phi_bao_hiem_chua_VAT: "913,000",
+    VAT: "85,300",
+    Tong_phi_bao_hiem_da_VAT: "998,300",
+    Trang_thai: "HUỶ",
     Ghi_chu: "PHƯỚC TGBH",
   },
   {
     GCN_TNDS: "TNDS2609/136681",
-    Ten_chu_xe: "CÔNG TY TNHH VẬN TẢI YÊN GL",
+    Ten_chu_xe: "TN XÂY DỰNG TỔNG HỢP ANH TUYỀN",
     Dia_chi: "456 LÊ DUẨN, PLEIKU, GIA LAI",
     Dien_thoai: "0987654321",
     Bien_kiem_soat: "77E01141",
@@ -51,18 +51,18 @@ const SAMPLE_DATA_ROWS: Record<string, string>[] = [
     So_cho: "3 chỗ",
     Trong_tai: "2.4 tấn",
     Muc_dich_su_dung: "Kinh doanh vận tải",
-    Ngay_hieu_luc: "15/09/2026",
-    Ngay_ket_thuc: "15/09/2027",
-    Ngay_cap: "15/09/2026",
-    Phi_bao_hiem_chua_VAT: "853,000",
-    VAT: "85,300",
-    Tong_phi_bao_hiem_da_VAT: "938,300",
-    Trang_thai: "Đã sửa đổi",
+    Ngay_hieu_luc: "04/09/2026",
+    Ngay_ket_thuc: "04/09/2027",
+    Ngay_cap: "04/09/2026",
+    Phi_bao_hiem_chua_VAT: "3,240,000",
+    VAT: "320,000",
+    Tong_phi_bao_hiem_da_VAT: "3,560,000",
+    Trang_thai: "ĐÃ SỬA ĐỔI",
     Ghi_chu: "YÊN GL",
   },
   {
     GCN_TNDS: "TNDS2609/876951",
-    Ten_chu_xe: "LÊ HOÀNG PHÚ",
+    Ten_chu_xe: "NN CÒ THÁI",
     Dia_chi: "789 NGUYỄN HUỆ, PHƯỜNG 1, TRÀ VINH",
     Dien_thoai: "0912345678",
     Bien_kiem_soat: "83H00097",
@@ -78,9 +78,9 @@ const SAMPLE_DATA_ROWS: Record<string, string>[] = [
     Ngay_hieu_luc: "14/09/2026",
     Ngay_ket_thuc: "14/09/2027",
     Ngay_cap: "14/09/2026",
-    Phi_bao_hiem_chua_VAT: "1,250,000",
-    VAT: "125,000",
-    Tong_phi_bao_hiem_da_VAT: "1,375,000",
+    Phi_bao_hiem_chua_VAT: "1,720,000",
+    VAT: "166,000",
+    Tong_phi_bao_hiem_da_VAT: "1,886,000",
     Trang_thai: "",
     Ghi_chu: "PHƯỚC TGBH",
   },
@@ -330,7 +330,19 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                       <td className="px-3 py-2.5 border-r border-slate-200 bg-slate-50 text-center font-bold">{rIdx + 1}</td>
                       {enabledCols.map((c) => (
                         <td key={c.key} className="px-3.5 py-2.5 border-r border-slate-200 last:border-r-0">
-                          {row[c.key] || "-"}
+                          {c.key === "Trang_thai" ? (
+                            row.Trang_thai ? (
+                              <span className={`px-2 py-0.5 text-[11px] font-bold rounded-md ${
+                                row.Trang_thai.includes("SỬA") || row.Trang_thai.includes("sửa")
+                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                  : "bg-rose-100 text-rose-700 border border-rose-300"
+                              }`}>
+                                {row.Trang_thai}
+                              </span>
+                            ) : ""
+                          ) : (
+                            row[c.key] || "-"
+                          )}
                         </td>
                       ))}
                     </tr>
