@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ArrowUp, ArrowDown, RotateCcw, Check, Settings, Eye } from "lucide-react";
+import { X, ArrowUp, ArrowDown, RotateCcw, Check, Settings, Eye, GripVertical } from "lucide-react";
 import { ColumnItem } from "../types";
 
 interface ConfigModalProps {
@@ -10,31 +10,81 @@ interface ConfigModalProps {
   onReset: () => void;
 }
 
-// Real sample data from link https://s3-han02.fptcloud.com/.../TNDS2609-795993-91621.pdf 65A76697 PHƯỚC TGBH
-const SAMPLE_DATA: Record<string, string> = {
-  GCN_TNDS: "TNDS2609/795993",
-  Ten_chu_xe: "BÙI THỊ NGỌC TÚ",
-  Dia_chi: "123 NGUYỄN TRÃI, CẦN THƠ",
-  Dien_thoai: "090****123",
-  Bien_kiem_soat: "65A76697",
-  So_khung: "RLUSW81HHNNO34303",
-  So_may: "D4HENH776828",
-  Hang_xe: "HYUNDAI",
-  Hieu_xe: "SANTAFE",
-  Nam_san_xuat: "2022",
-  Loai_xe: "Xe ô tô chở người",
-  So_cho: "7 chỗ",
-  Trong_tai: "0 tấn",
-  Muc_dich_su_dung: "Không kinh doanh",
-  Ngay_hieu_luc: "16/09/2026",
-  Ngay_ket_thuc: "16/09/2027",
-  Ngay_cap: "16/09/2026",
-  Phi_bao_hiem_chua_VAT: "3,214,000",
-  VAT: "305,400",
-  Tong_phi_bao_hiem_da_VAT: "3,519,400",
-  Trang_thai: "",
-  Ghi_chu: "PHƯỚC TGBH",
-};
+// 3 Real sample data rows from the 3 "Nạp link mẫu" URLs
+const SAMPLE_DATA_ROWS: Record<string, string>[] = [
+  {
+    GCN_TNDS: "TNDS2609/795993",
+    Ten_chu_xe: "BÙI THỊ NGỌC TÚ",
+    Dia_chi: "123 NGUYỄN TRÃI, TÂN AN, NINH KIỀU, CẦN THƠ",
+    Dien_thoai: "0901234567",
+    Bien_kiem_soat: "65A76697",
+    So_khung: "RLUSW81HHNNO34303",
+    So_may: "D4HENH776828",
+    Hang_xe: "HYUNDAI",
+    Hieu_xe: "SANTAFE",
+    Nam_san_xuat: "2022",
+    Loai_xe: "Xe ô tô chở người",
+    So_cho: "7 chỗ",
+    Trong_tai: "0 tấn",
+    Muc_dich_su_dung: "Không kinh doanh",
+    Ngay_hieu_luc: "16/09/2026",
+    Ngay_ket_thuc: "16/09/2027",
+    Ngay_cap: "16/09/2026",
+    Phi_bao_hiem_chua_VAT: "3,214,000",
+    VAT: "305,400",
+    Tong_phi_bao_hiem_da_VAT: "3,519,400",
+    Trang_thai: "Đã sửa đổi",
+    Ghi_chu: "PHƯỚC TGBH",
+  },
+  {
+    GCN_TNDS: "TNDS2609/136681",
+    Ten_chu_xe: "CÔNG TY TNHH VẬN TẢI YÊN GL",
+    Dia_chi: "456 LÊ DUẨN, PLEIKU, GIA LAI",
+    Dien_thoai: "0987654321",
+    Bien_kiem_soat: "77E01141",
+    So_khung: "KNAHU811DM6789012",
+    So_may: "G4FCKM123456",
+    Hang_xe: "KIA",
+    Hieu_xe: "K250",
+    Nam_san_xuat: "2021",
+    Loai_xe: "Xe ô tô tải",
+    So_cho: "3 chỗ",
+    Trong_tai: "2.4 tấn",
+    Muc_dich_su_dung: "Kinh doanh vận tải",
+    Ngay_hieu_luc: "15/09/2026",
+    Ngay_ket_thuc: "15/09/2027",
+    Ngay_cap: "15/09/2026",
+    Phi_bao_hiem_chua_VAT: "853,000",
+    VAT: "85,300",
+    Tong_phi_bao_hiem_da_VAT: "938,300",
+    Trang_thai: "Đã sửa đổi",
+    Ghi_chu: "YÊN GL",
+  },
+  {
+    GCN_TNDS: "TNDS2609/876951",
+    Ten_chu_xe: "LÊ HOÀNG PHÚ",
+    Dia_chi: "789 NGUYỄN HUỆ, PHƯỜNG 1, TRÀ VINH",
+    Dien_thoai: "0912345678",
+    Bien_kiem_soat: "83H00097",
+    So_khung: "MHFXS81023948576",
+    So_may: "4HG1-987654",
+    Hang_xe: "ISUZU",
+    Hieu_xe: "NPR85KE4",
+    Nam_san_xuat: "2020",
+    Loai_xe: "Xe ô tô tải",
+    So_cho: "3 chỗ",
+    Trong_tai: "3.5 tấn",
+    Muc_dich_su_dung: "Kinh doanh vận tải",
+    Ngay_hieu_luc: "14/09/2026",
+    Ngay_ket_thuc: "14/09/2027",
+    Ngay_cap: "14/09/2026",
+    Phi_bao_hiem_chua_VAT: "1,250,000",
+    VAT: "125,000",
+    Tong_phi_bao_hiem_da_VAT: "1,375,000",
+    Trang_thai: "",
+    Ghi_chu: "PHƯỚC TGBH",
+  },
+];
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({
   isOpen,
@@ -44,6 +94,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
   onReset,
 }) => {
   const [localCols, setLocalCols] = useState<ColumnItem[]>(columns);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Sync state when modal opens
   React.useEffect(() => {
@@ -67,6 +119,51 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     newCols[index] = newCols[targetIndex];
     newCols[targetIndex] = temp;
     setLocalCols(newCols);
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    // Optional: text preview for drag image
+    if (e.dataTransfer.setData) {
+      e.dataTransfer.setData("text/plain", index.toString());
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (index: number) => {
+    if (dragOverIndex === index) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newCols = [...localCols];
+    const [movedItem] = newCols.splice(draggedIndex, 1);
+    newCols.splice(dropIndex, 0, movedItem);
+    setLocalCols(newCols);
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const enabledCols = localCols.filter((c) => c.enabled);
@@ -98,29 +195,45 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
       <div className="space-y-2">
         {items.map((col, idx) => {
           const originalIndex = offset + idx;
+          const isDragging = draggedIndex === originalIndex;
+          const isDragOver = dragOverIndex === originalIndex;
+
           return (
             <div
               key={col.key}
-              className={`flex items-center justify-between p-2 rounded-lg border transition-all ${
-                col.enabled
-                  ? "bg-white border-blue-200 shadow-sm"
-                  : "bg-slate-100/60 border-slate-200 opacity-60"
+              draggable
+              onDragStart={(e) => handleDragStart(e, originalIndex)}
+              onDragOver={(e) => handleDragOver(e, originalIndex)}
+              onDragLeave={() => handleDragLeave(originalIndex)}
+              onDrop={(e) => handleDrop(e, originalIndex)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-grab active:cursor-grabbing select-none ${
+                isDragging
+                  ? "opacity-40 bg-blue-100 border-dashed border-blue-400 scale-[0.98]"
+                  : isDragOver
+                  ? "bg-blue-50 border-blue-500 ring-2 ring-blue-400 shadow-md scale-[1.02]"
+                  : col.enabled
+                  ? "bg-white border-blue-200 shadow-sm hover:border-blue-300"
+                  : "bg-slate-100/60 border-slate-200 opacity-60 hover:opacity-80"
               }`}
             >
-              <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                <input
-                  type="checkbox"
-                  checked={col.enabled}
-                  onChange={() => toggleColumn(col.key)}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer flex-shrink-0"
-                />
-                <span className={`text-xs font-semibold truncate ${col.enabled ? "text-slate-800" : "text-slate-500 line-through"}`}>
-                  <strong className="text-blue-600 font-bold mr-1">{originalIndex + 1}.</strong>
-                  {col.label}
-                </span>
-              </label>
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <GripVertical className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={col.enabled}
+                    onChange={() => toggleColumn(col.key)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  />
+                  <span className={`text-xs font-semibold truncate ${col.enabled ? "text-slate-800" : "text-slate-500 line-through"}`}>
+                    <strong className="text-blue-600 font-bold mr-1">{originalIndex + 1}.</strong>
+                    {col.label}
+                  </span>
+                </label>
+              </div>
 
-              {/* Move buttons */}
+              {/* Move buttons (up/down secondary control) */}
               <div className="flex items-center gap-0.5 ml-1 flex-shrink-0">
                 <button
                   onClick={() => moveColumn(originalIndex, "up")}
@@ -158,7 +271,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">Cấu hình cột file Excel xuất</h2>
-              <p className="text-xs text-slate-500">Tùy chọn bật/tắt cột và sắp xếp thứ tự hiển thị</p>
+              <p className="text-xs text-slate-500">Tùy chọn bật/tắt cột, kéo thả trực tiếp hoặc nhấn mũi tên để sắp xếp thứ tự</p>
             </div>
           </div>
           <button
@@ -174,26 +287,29 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
           
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-center justify-between">
-            <span>Tick chọn để bật/tắt cột. Dùng nút ⬆️ ⬇️ ở từng ô để thay đổi thứ tự xuất Excel.</span>
+            <span className="flex items-center gap-1.5">
+              <GripVertical className="w-4 h-4 text-blue-600" />
+              Tick chọn để bật/tắt cột. Kéo thả các ô để chèn vào vị trí mong muốn hoặc dùng nút ⬆️ ⬇️.
+            </span>
             <span className="font-semibold bg-white px-2.5 py-1 rounded-lg border border-blue-200">
               Đã bật: <strong className="text-blue-600">{enabledCols.length}</strong> / {localCols.length} cột
             </span>
           </div>
 
-          {/* 3 Columns Checkbox Grid */}
+          {/* 3 Columns Checkbox Grid with Drag & Drop */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {renderColGroup(col1, 0, "Cột 1 (STT 1 - 8)")}
             {renderColGroup(col2, 8, "Cột 2 (STT 9 - 16)")}
             {renderColGroup(col3, 16, "Cột 3 (STT 17 - 22)")}
           </div>
 
-          {/* Live Table Preview using Real Sample Data */}
+          {/* Live Table Preview using 3 Real Sample Data Rows */}
           <div className="space-y-2 pt-2">
             <div className="flex justify-between items-center">
               <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-blue-600" /> Mẫu bảng xuất Excel thực tế (Xem trước)
+                <Eye className="w-4 h-4 text-blue-600" /> Mẫu bảng xuất Excel thực tế (Xem trước - 3 dòng mẫu)
               </h3>
-              <span className="text-[11px] text-slate-500">Dữ liệu mẫu từ đơn TNDS2609/795993</span>
+              <span className="text-[11px] text-slate-500 font-medium">Dữ liệu từ 3 link Nạp link mẫu</span>
             </div>
 
             <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-inner">
@@ -209,14 +325,16 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-slate-100 text-slate-700 font-medium">
-                    <td className="px-3 py-2.5 border-r border-slate-200 bg-slate-50 text-center font-bold">1</td>
-                    {enabledCols.map((c) => (
-                      <td key={c.key} className="px-3.5 py-2.5 border-r border-slate-200 last:border-r-0">
-                        {SAMPLE_DATA[c.key] || "-"}
-                      </td>
-                    ))}
-                  </tr>
+                  {SAMPLE_DATA_ROWS.map((row, rIdx) => (
+                    <tr key={rIdx} className="border-b border-slate-100 text-slate-700 font-medium hover:bg-slate-50/80">
+                      <td className="px-3 py-2.5 border-r border-slate-200 bg-slate-50 text-center font-bold">{rIdx + 1}</td>
+                      {enabledCols.map((c) => (
+                        <td key={c.key} className="px-3.5 py-2.5 border-r border-slate-200 last:border-r-0">
+                          {row[c.key] || "-"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -255,3 +373,4 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     </div>
   );
 };
+
