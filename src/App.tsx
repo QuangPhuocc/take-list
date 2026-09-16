@@ -273,7 +273,7 @@ export default function App() {
   // Sample data button for instant testing
   const loadSampleUrl = () => {
     setUrlInput(
-      `https://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB/TNDS2609-409586-37113.pdf\n15K77720 YÊN GL\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-233673-57793.pdf\n65H07081 PHƯỚC TGBH`
+      `https://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-795993-91621.pdf 65A76697 PHƯỚC TGBH\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_ENDORSEMENT_FLAT/TNDS2609-136681-71938.pdf 77E01141 YÊN GL\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-876951-62552.pdf 83H00097 PHƯỚC TGBH`
     );
   };
 
@@ -343,7 +343,7 @@ export default function App() {
               }`}
             >
               <LinkIcon className="w-4 h-4" />
-              Nhập danh sách Link PDF (Mặc định)
+              Nhập danh sách Link PDF
             </button>
             <button
               onClick={() => setActiveTab("file")}
@@ -362,12 +362,12 @@ export default function App() {
           {activeTab === "url" && (
             <div className="space-y-3">
               <div className="flex justify-between items-center text-xs text-slate-500">
-                <span>Dán danh sách các đường link PDF vào đây (mỗi link 1 dòng, dán liên tiếp tới 100+ link, có thể đính kèm thông tin sau link):</span>
+                <span>Dán danh sách các đường link PDF vào đây</span>
                 <button
                   onClick={loadSampleUrl}
                   className="text-blue-600 font-medium hover:underline flex items-center gap-1"
                 >
-                  <Sparkles className="w-3 h-3" /> Nạp link mẫu thử
+                  <Sparkles className="w-3 h-3" /> Nạp link mẫu
                 </button>
               </div>
 
