@@ -1,7 +1,36 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Copy, Upload, FileType, CheckCircle, XCircle, Loader2, Download, AlertCircle, Link as LinkIcon, Sparkles, RefreshCw, Trash2, Edit3, Check, FileWarning } from "lucide-react";
+import { Copy, Upload, FileType, CheckCircle, XCircle, Loader2, Download, AlertCircle, Link as LinkIcon, Sparkles, RefreshCw, Trash2, Edit3, Check, FileWarning, Settings } from "lucide-react";
 import * as xlsx from "xlsx";
-import { type InsuranceRecord } from "./types";
+import { type InsuranceRecord, type ColumnItem } from "./types";
+import { ConfigModal } from "./components/ConfigModal";
+
+const DEFAULT_COLUMNS: ColumnItem[] = [
+  { key: "GCN_TNDS", label: "GCN_TNDS", enabled: true },
+  { key: "Ten_chu_xe", label: "Tên chủ xe", enabled: true },
+  { key: "Bien_kiem_soat", label: "Biển kiểm soát", enabled: true },
+  { key: "Ngay_cap", label: "Ngày cấp", enabled: true },
+  { key: "Phi_bao_hiem_chua_VAT", label: "Phí bảo hiểm chưa VAT", enabled: true },
+  { key: "VAT", label: "VAT", enabled: true },
+  { key: "Tong_phi_bao_hiem_da_VAT", label: "Tổng phí bảo hiểm đã VAT", enabled: true },
+  { key: "Trang_thai", label: "Trạng thái", enabled: true },
+  { key: "Ghi_chu", label: "Ghi chú", enabled: true },
+  // Extra fields disabled by default
+  { key: "Dia_chi", label: "Địa chỉ", enabled: false },
+  { key: "Dien_thoai", label: "Điện thoại", enabled: false },
+  { key: "So_khung", label: "Số khung", enabled: false },
+  { key: "So_may", label: "Số máy", enabled: false },
+  { key: "Hang_xe", label: "Hãng xe", enabled: false },
+  { key: "Hieu_xe", label: "Hiệu xe", enabled: false },
+  { key: "Nam_san_xuat", label: "Năm sản xuất", enabled: false },
+  { key: "Loai_xe", label: "Loại xe", enabled: false },
+  { key: "So_cho", label: "Số chỗ", enabled: false },
+  { key: "Trong_tai", label: "Trọng tải", enabled: false },
+  { key: "Muc_dich_su_dung", label: "Mục đích sử dụng", enabled: false },
+  { key: "Ngay_hieu_luc", label: "Ngày hiệu lực (Từ)", enabled: false },
+  { key: "Ngay_ket_thuc", label: "Ngày kết thúc (Đến)", enabled: false },
+];
+
+const STORAGE_KEY = "TASCO_EXPORT_COLUMNS_V4";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"url" | "file">("url");
@@ -9,10 +38,56 @@ export default function App() {
   const [records, setRecords] = useState<InsuranceRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<InsuranceRecord>>({});
+  const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
+
+  // Column configuration with localStorage persistence
+  const [columns, setColumns] = useState<ColumnItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: ColumnItem[] = JSON.parse(saved);
+        const existingKeys = new Set(parsed.map((c) => c.key));
+        const missing = DEFAULT_COLUMNS.filter((c) => !existingKeys.has(c.key));
+        return [...parsed, ...missing];
+      }
+    } catch (e) { }
+    return DEFAULT_COLUMNS;
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isProcessing = records.some(r => r.status === "pending" || r.status === "processing");
+
+  const createEmptyRecord = (id: string, filename: string, url?: string, inputLine?: string, file?: File): InsuranceRecord => ({
+    id,
+    GCN_TNDS: "",
+    Ten_chu_xe: "",
+    Dia_chi: "",
+    Dien_thoai: "",
+    Bien_kiem_soat: "",
+    So_khung: "",
+    So_may: "",
+    Hang_xe: "",
+    Hieu_xe: "",
+    Nam_san_xuat: "",
+    Loai_xe: "",
+    So_cho: "",
+    Trong_tai: "",
+    Muc_dich_su_dung: "",
+    Ngay_hieu_luc: "",
+    Ngay_ket_thuc: "",
+    Ngay_cap: "",
+    Phi_bao_hiem_chua_VAT: "",
+    VAT: "",
+    Tong_phi_bao_hiem_da_VAT: "",
+    Trang_thai: "",
+    Ghi_chu: "",
+    originalFilename: filename,
+    url,
+    inputLine,
+    status: "pending",
+    file,
+  });
 
   // Helper to parse multi-line text input into URL blocks with associated context text (even if on the next line)
   const parseUrlBlocks = (rawText: string) => {
@@ -52,24 +127,9 @@ export default function App() {
   const handleProcessUrls = () => {
     if (parsedUrlBlocks.length === 0) return;
 
-    const newRecords: InsuranceRecord[] = parsedUrlBlocks.map((block) => {
-      return {
-        id: crypto.randomUUID(),
-        GCN_TNDS: "",
-        Ten_chu_xe: "",
-        Bien_kiem_soat: "",
-        Ngay_cap: "",
-        Phi_bao_hiem_chua_VAT: "",
-        VAT: "",
-        Tong_phi_bao_hiem_da_VAT: "",
-        Trang_thai: "",
-        Ghi_chu: "",
-        originalFilename: block.filename,
-        url: block.url,
-        inputLine: block.combinedLine,
-        status: "pending" as const,
-      };
-    });
+    const newRecords: InsuranceRecord[] = parsedUrlBlocks.map((block) =>
+      createEmptyRecord(crypto.randomUUID(), block.filename, block.url, block.combinedLine)
+    );
 
     setRecords((prev) => [...prev, ...newRecords]);
     setUrlInput("");
@@ -78,21 +138,9 @@ export default function App() {
 
   // Process batch of local files
   const handleFiles = useCallback((files: File[]) => {
-    const newRecords: InsuranceRecord[] = files.map((file) => ({
-      id: crypto.randomUUID(),
-      GCN_TNDS: "",
-      Ten_chu_xe: "",
-      Bien_kiem_soat: "",
-      Ngay_cap: "",
-      Phi_bao_hiem_chua_VAT: "",
-      VAT: "",
-      Tong_phi_bao_hiem_da_VAT: "",
-      Trang_thai: "",
-      Ghi_chu: "",
-      originalFilename: file.name,
-      status: "pending" as const,
-      file,
-    }));
+    const newRecords: InsuranceRecord[] = files.map((file) =>
+      createEmptyRecord(crypto.randomUUID(), file.name, undefined, undefined, file)
+    );
 
     setRecords((prev) => [...prev, ...newRecords]);
     processQueue(newRecords);
@@ -110,14 +158,12 @@ export default function App() {
         let response: Response;
 
         if (item.url || item.inputLine) {
-          // Send request to URL endpoint
           response = await fetch("/api/parse-insurance-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ inputLine: item.inputLine || item.url }),
           });
         } else if (item.file) {
-          // Send request to File upload endpoint
           const formData = new FormData();
           formData.append("file", item.file as Blob);
           response = await fetch("/api/parse-insurance", {
@@ -148,7 +194,20 @@ export default function App() {
                     status: "success",
                     GCN_TNDS: json.data.GCN_TNDS || "",
                     Ten_chu_xe: json.data.Ten_chu_xe || "",
+                    Dia_chi: json.data.Dia_chi || "",
+                    Dien_thoai: json.data.Dien_thoai || "",
                     Bien_kiem_soat: json.data.Bien_kiem_soat || "",
+                    So_khung: json.data.So_khung || "",
+                    So_may: json.data.So_may || "",
+                    Hang_xe: json.data.Hang_xe || "",
+                    Hieu_xe: json.data.Hieu_xe || "",
+                    Nam_san_xuat: json.data.Nam_san_xuat || "",
+                    Loai_xe: json.data.Loai_xe || "",
+                    So_cho: json.data.So_cho || "",
+                    Trong_tai: json.data.Trong_tai || "",
+                    Muc_dich_su_dung: json.data.Muc_dich_su_dung || "",
+                    Ngay_hieu_luc: json.data.Ngay_hieu_luc || "",
+                    Ngay_ket_thuc: json.data.Ngay_ket_thuc || "",
                     Ngay_cap: json.data.Ngay_cap || "",
                     Phi_bao_hiem_chua_VAT: json.data.Phi_bao_hiem_chua_VAT || "",
                     VAT: json.data.VAT || "",
@@ -173,7 +232,6 @@ export default function App() {
         );
       }
 
-      // Enforce 4.5s delay between requests to stay safely below 15 RPM
       const elapsed = Date.now() - startTime;
       const minInterval = 4500;
       if (elapsed < minInterval) {
@@ -199,7 +257,6 @@ export default function App() {
     }
   };
 
-  // Inline editing functions
   const startEditing = (r: InsuranceRecord) => {
     setEditingId(r.id);
     setEditForm({ ...r });
@@ -221,9 +278,25 @@ export default function App() {
     setRecords((prev) => prev.filter((r) => r.id !== id));
   };
 
+  const handleSaveColumns = (newCols: ColumnItem[]) => {
+    setColumns(newCols);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newCols));
+    } catch (e) {}
+  };
+
+  const handleResetColumns = () => {
+    setColumns(DEFAULT_COLUMNS);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+  };
+
   const exportExcel = () => {
     const completedRecords = records.filter(r => r.status === 'success' || r.status === 'error');
     if (completedRecords.length === 0) return;
+
+    const enabledCols = columns.filter((c) => c.enabled);
 
     const parseCurrency = (val: string) => {
       if (!val) return val;
@@ -232,35 +305,32 @@ export default function App() {
       return Number(numString);
     };
 
-    const dataRows = completedRecords.map((r, index) => ({
-      STT: index + 1,
-      GCN_TNDS: r.GCN_TNDS,
-      "Tên chủ xe": r.Ten_chu_xe,
-      "Biển kiểm soát": r.Bien_kiem_soat,
-      "Ngày cấp": r.Ngay_cap,
-      "Phí bảo hiểm chưa VAT": parseCurrency(r.Phi_bao_hiem_chua_VAT),
-      VAT: parseCurrency(r.VAT),
-      "Tổng phí bảo hiểm đã VAT": parseCurrency(r.Tong_phi_bao_hiem_da_VAT),
-      "Trạng thái": r.Trang_thai,
-      "Ghi chú": r.status === 'error' ? "Lỗi: " + r.errorMessage : r.Ghi_chu,
-    }));
+    const currencyKeys = new Set(["Phi_bao_hiem_chua_VAT", "VAT", "Tong_phi_bao_hiem_da_VAT"]);
+
+    const dataRows = completedRecords.map((r, index) => {
+      const rowObj: Record<string, any> = { STT: index + 1 };
+      
+      enabledCols.forEach((col) => {
+        let val = r[col.key] || "";
+        if (col.key === "Ghi_chu" && r.status === "error") {
+          val = "Lỗi: " + (r.errorMessage || "Chưa xác định");
+        }
+
+        if (currencyKeys.has(col.key as string)) {
+          rowObj[col.label] = parseCurrency(val as string);
+        } else {
+          rowObj[col.label] = val;
+        }
+      });
+
+      return rowObj;
+    });
 
     const worksheet = xlsx.utils.json_to_sheet(dataRows);
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, "BaoHiem");
 
-    const columnWidths = [
-      { wch: 5 },  // STT
-      { wch: 20 }, // GCN_TNDS
-      { wch: 25 }, // Tên chủ xe
-      { wch: 15 }, // Biển kiểm soát
-      { wch: 15 }, // Ngày cấp
-      { wch: 20 }, // Phí bảo hiểm chưa VAT
-      { wch: 15 }, // VAT
-      { wch: 20 }, // Tổng phí bảo hiểm đã VAT
-      { wch: 15 }, // Trạng thái
-      { wch: 30 }, // Ghi chú
-    ];
+    const columnWidths = [{ wch: 5 }, ...enabledCols.map((c) => ({ wch: Math.max(c.label.length + 5, 16) }))];
     worksheet['!cols'] = columnWidths;
 
     xlsx.writeFile(workbook, "Bang_Ke_Thong_Tin_Bao_Hiem.xlsx");
@@ -270,7 +340,6 @@ export default function App() {
     setRecords([]);
   };
 
-  // Sample data button for instant testing
   const loadSampleUrl = () => {
     setUrlInput(
       `https://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-795993-91621.pdf 65A76697 PHƯỚC TGBH\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_ENDORSEMENT_FLAT/TNDS2609-136681-71938.pdf 77E01141 YÊN GL\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-876951-62552.pdf 83H00097 PHƯỚC TGBH`
@@ -294,6 +363,8 @@ export default function App() {
     return `${mins} phút ${secs} giây`;
   };
 
+  const enabledColumns = columns.filter((c) => c.enabled);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -304,14 +375,21 @@ export default function App() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V3</h1>
               <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                Hỗ trợ URL PDF hàng loạt (100+ link)
+                Hỗ trợ 22 trường & Cấu hình Excel tùy chỉnh
               </span>
             </div>
             <p className="text-sm text-slate-500 mt-1">
-              Trích xuất chính xác thông tin Giấy chứng nhận bảo hiểm từ đường link PDF hoặc file ảnh
+              Trích xuất toàn bộ thông tin Giấy chứng nhận bảo hiểm & tùy chỉnh các cột xuất Excel
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setIsConfigOpen(true)}
+              className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Settings className="w-4 h-4 text-blue-600" />
+              Cấu hình file xuất
+            </button>
             <button
               onClick={clearRecords}
               disabled={records.length === 0 || isProcessing}
@@ -326,7 +404,7 @@ export default function App() {
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors shadow-sm"
             >
               <Download className="w-4 h-4" />
-              Xuất Excel
+              Xuất Excel ({enabledColumns.length} cột)
             </button>
           </div>
         </header>
@@ -472,7 +550,9 @@ export default function App() {
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Bảng kết quả trích xuất ({records.length})</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Rà soát dữ liệu đọc được. Nhấp biểu tượng sửa để chỉnh sửa trước khi xuất Excel.</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hiển thị các cột đang bật trong cấu hình ({enabledColumns.length} cột). Nhấp nút sửa để chỉnh sửa trước khi xuất Excel.
+                </p>
               </div>
               <span className="text-xs text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
                 Thành công: <span className="text-green-600 font-bold">{successCount}</span> | Lỗi: <span className="text-red-600 font-bold">{errorCount}</span>
@@ -485,15 +565,11 @@ export default function App() {
                   <tr>
                     <th scope="col" className="px-4 py-3">STT</th>
                     <th scope="col" className="px-4 py-3">Tên file / Link</th>
-                    <th scope="col" className="px-4 py-3">GCN_TNDS</th>
-                    <th scope="col" className="px-4 py-3">Tên chủ xe</th>
-                    <th scope="col" className="px-4 py-3">Biển kiểm soát</th>
-                    <th scope="col" className="px-4 py-3">Ngày cấp</th>
-                    <th scope="col" className="px-4 py-3">Phí chưa VAT</th>
-                    <th scope="col" className="px-4 py-3">VAT</th>
-                    <th scope="col" className="px-4 py-3">Tổng phí đã VAT</th>
-                    <th scope="col" className="px-4 py-3">Trạng thái</th>
-                    <th scope="col" className="px-4 py-3">Ghi chú</th>
+                    {enabledColumns.map((col) => (
+                      <th key={col.key} scope="col" className="px-4 py-3">
+                        {col.label}
+                      </th>
+                    ))}
                     <th scope="col" className="px-4 py-3 text-center">Thao tác</th>
                   </tr>
                 </thead>
@@ -506,7 +582,7 @@ export default function App() {
                         <td className="px-4 py-3 font-medium text-slate-900">{i + 1}</td>
                         
                         {/* Filename / URL */}
-                        <td className="px-4 py-3 max-w-[200px] truncate" title={r.url || r.originalFilename}>
+                        <td className="px-4 py-3 max-w-[180px] truncate" title={r.url || r.originalFilename}>
                           <div className="flex items-center gap-2">
                             {r.status === 'pending' && <AlertCircle className="w-4 h-4 text-slate-400" />}
                             {r.status === 'processing' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
@@ -517,148 +593,46 @@ export default function App() {
                           </div>
                         </td>
 
-                        {/* GCN_TNDS */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.GCN_TNDS || ""}
-                              onChange={(e) => setEditForm({ ...editForm, GCN_TNDS: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.GCN_TNDS
-                          )}
-                        </td>
+                        {/* Dynamic Enabled Columns */}
+                        {enabledColumns.map((col) => {
+                          const val = (isEditing ? editForm[col.key] : r[col.key]) || "";
 
-                        {/* Ten_chu_xe */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Ten_chu_xe || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Ten_chu_xe: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.Ten_chu_xe
-                          )}
-                        </td>
-
-                        {/* Bien_kiem_soat */}
-                        <td className="px-4 py-3 font-mono font-medium">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Bien_kiem_soat || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Bien_kiem_soat: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.Bien_kiem_soat
-                          )}
-                        </td>
-
-                        {/* Ngay_cap */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Ngay_cap || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Ngay_cap: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.Ngay_cap
-                          )}
-                        </td>
-
-                        {/* Phi_bao_hiem_chua_VAT */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Phi_bao_hiem_chua_VAT || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Phi_bao_hiem_chua_VAT: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.Phi_bao_hiem_chua_VAT
-                          )}
-                        </td>
-
-                        {/* VAT */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.VAT || ""}
-                              onChange={(e) => setEditForm({ ...editForm, VAT: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.VAT
-                          )}
-                        </td>
-
-                        {/* Tong_phi_bao_hiem_da_VAT */}
-                        <td className="px-4 py-3 font-medium">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Tong_phi_bao_hiem_da_VAT || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Tong_phi_bao_hiem_da_VAT: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            <div>
-                              <span>{r.Tong_phi_bao_hiem_da_VAT}</span>
-                              {r.feeWarning && (
-                                <p className="text-[10px] text-amber-600 font-normal">{r.feeWarning}</p>
+                          return (
+                            <td key={col.key} className="px-4 py-3">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={val as string}
+                                  onChange={(e) => setEditForm({ ...editForm, [col.key]: e.target.value })}
+                                  className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500 bg-white"
+                                />
+                              ) : col.key === "Trang_thai" ? (
+                                r.Trang_thai && (
+                                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${
+                                    r.Trang_thai.includes("SỬA")
+                                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                      : "bg-rose-100 text-rose-700 border border-rose-300"
+                                  }`}>
+                                    {r.Trang_thai}
+                                  </span>
+                                )
+                              ) : col.key === "Tong_phi_bao_hiem_da_VAT" ? (
+                                <div>
+                                  <span>{r.Tong_phi_bao_hiem_da_VAT}</span>
+                                  {r.feeWarning && (
+                                    <p className="text-[10px] text-amber-600 font-normal">{r.feeWarning}</p>
+                                  )}
+                                </div>
+                              ) : col.key === "Ghi_chu" && r.status === "error" ? (
+                                <span className="text-red-500 text-xs">Lỗi: {r.errorMessage}</span>
+                              ) : (
+                                (val as string)
                               )}
-                            </div>
-                          )}
-                        </td>
+                            </td>
+                          );
+                        })}
 
-                        {/* Trang_thai */}
-                        <td className="px-4 py-3">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Trang_thai || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Trang_thai: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : (
-                            r.Trang_thai && (
-                              <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${
-                                r.Trang_thai.includes("SỬA")
-                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
-                                  : "bg-rose-100 text-rose-700 border border-rose-300"
-                              }`}>
-                                {r.Trang_thai}
-                              </span>
-                            )
-                          )}
-                        </td>
-
-                        {/* Ghi_chu */}
-                        <td className="px-4 py-3 max-w-[200px] truncate" title={r.status === 'error' ? r.errorMessage : r.Ghi_chu}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.Ghi_chu || ""}
-                              onChange={(e) => setEditForm({ ...editForm, Ghi_chu: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border rounded outline-none border-blue-500"
-                            />
-                          ) : r.status === 'error' ? (
-                            <span className="text-red-500 text-xs">Lỗi: {r.errorMessage}</span>
-                          ) : (
-                            r.Ghi_chu
-                          )}
-                        </td>
-
-                        {/* Thao tac */}
+                        {/* Actions */}
                         <td className="px-4 py-3 text-center">
                           {isEditing ? (
                             <div className="flex items-center justify-center gap-1">
@@ -688,6 +662,16 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Config Modal Popup */}
+        <ConfigModal
+          isOpen={isConfigOpen}
+          onClose={() => setIsConfigOpen(false)}
+          columns={columns}
+          onSave={handleSaveColumns}
+          onReset={handleResetColumns}
+        />
+
       </div>
     </div>
   );
