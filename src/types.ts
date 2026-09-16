@@ -10,7 +10,11 @@ export interface InsuranceRecord {
   Trang_thai: string;
   Ghi_chu: string;
   originalFilename: string;
+  url?: string;
+  feeWarning?: string;
   status: "pending" | "processing" | "success" | "error";
   errorMessage?: string;
   file?: File;
+  inputLine?: string;
 }
+

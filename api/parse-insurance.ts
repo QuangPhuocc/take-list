@@ -101,34 +101,34 @@ export default async function handler(req: any, res: any) {
         const mimeType =
             fileObj.mimetype || "application/pdf";
 
-        const prompt = `Analyze this insurance document and extract the required fields.
-    
-Filename context for "Trạng thái" and "Ghi chú": "${utf8Name}"
-Rules for filename extraction:
-- Trạng thái: Lấy từ tên file, nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
-- Ghi chú: Nội dung thường nằm sau Biển kiểm soát của tên file. 
-  Ví dụ tên file là "HUỶ 12A11216 THƯƠNG TGBH" thì biển số là 12A11216, ghi chú là "THƯƠNG TGBH".
-  Ví dụ tên file là "51D93485 PHƯỚC.pdf" thì biển số là 51D93485, ghi chú là "PHƯỚC".
-  Nếu tên file không rõ ràng, không thể tách trạng thái và ghi chú thì lưu toàn bộ "${utf8Name}" vào Ghi chú và để trống trạng thái.
-  
+        const prompt = `Analyze this insurance document and extract the required fields with extreme accuracy.
+
+Rules for context & filename extraction:
+- Trạng thái: Lấy từ tên file/văn bản kèm theo. Nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
+- Biển kiểm soát & Ghi chú:
+  * Nếu văn bản kèm theo chứa biển kiểm soát (ví dụ "15K77720 YÊN GL" hoặc "HUỶ 12A11216 THƯƠNG TGBH"):
+    - Biển kiểm soát: Ưu tiên biển số trong văn bản kèm theo (ví dụ: "15K77720" hoặc "12A11216") nếu trên chứng nhận khó đọc.
+    - Ghi chú: Phần thông tin còn lại trong văn bản (ví dụ: "YÊN GL" hoặc "THƯƠNG TGBH").
+  * Nếu văn bản không rõ ràng, lưu toàn bộ văn bản đính kèm vào Ghi chú.
+
 Rules for document extraction:
 - GCN_TNDS: Số seri (thường nằm trên cùng, ví dụ: TNDS2606/632467)
 - Tên chủ xe: Tên chủ xe đầy đủ
-- Biển kiểm soát: Biển kiểm soát của xe. Hãy CỰC KỲ CẨN THẬN để tránh lỗi OCR nhận diện sai chữ cái thành chữ số (hoặc ngược lại):
-  * Nhầm chữ "B" thành số "8" (Ví dụ: "81B" bị nhận diện nhầm thành "818"). Hãy đảm bảo ký tự thứ 3 của biển số thường là chữ cái.
-  * Nhầm chữ "S" thành số "5" (Ví dụ: "51S" bị nhận diện nhầm thành "515" hoặc "51").
-  * Nhầm chữ "D" thành số "0" hoặc chữ "O".
-  * Nhầm chữ "I" hoặc "L" thành số "1".
-  Hãy đối chiếu định dạng biển số xe Việt Nam chuẩn: [2 chữ số mã tỉnh] + [1 hoặc 2 chữ cái sê-ri] + [dãy số phía sau].
-- Ngày cấp: Ngày cấp bảo hiểm (ngày cấp/ngày ký/ngày bắt đầu hiệu lực bảo hiểm). BẮT BUỘC định dạng dd/mm/yyyy. Ví dụ: '22/06/2026'. Tìm ở phần chữ ký điện tử ký ngày dd/mm/yyyy hoặc góc dưới cùng bên phải.
-- Phi_bao_hiem_chua_VAT: BẮT BUỘC phải lấy số tiền từ dòng "Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)". KHÔNG lấy phí bảo hiểm riêng lẻ của mục 1 hay mục khác.
-- VAT: BẮT BUỘC phải lấy từ dòng "VAT:" hoặc "Thuế giá trị gia tăng".
-- Tong_phi_bao_hiem_da_VAT: BẮT BUỘC phải lấy từ dòng "Tổng phí bảo hiểm thanh toán (gồm VAT):".
-- Ensure numbers are formatted as raw numbers or exactly as they appear.
+- Biển kiểm soát: Biển kiểm soát của xe. Hãy CỰC KỲ CẨN THẬN tránh nhầm lẫn chữ cái và số:
+  * Nhầm chữ "B" thành "8", chữ "S" thành "5", chữ "D" thành "0", chữ "I/L" thành "1".
+  * Định dạng biển số xe Việt Nam chuẩn: [2 chữ số mã tỉnh] + [1 hoặc 2 chữ cái sê-ri] + [dãy số phía sau].
+- Ngày cấp: Ngày cấp bảo hiểm (ngày cấp/ngày ký/ngày bắt đầu hiệu lực bảo hiểm). BẮT BUỘC định dạng dd/mm/yyyy. Ví dụ: '22/06/2026'.
+
+QUY TẮC BẮT BUỘC VỀ PHÍ BẢO HIỂM (Cực kỳ quan trọng - Copy chính xác từng chữ số):
+- Phi_bao_hiem_chua_VAT: BẮT BUỘC lấy chính xác số tiền từ dòng "Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)" hoặc dòng "Tổng phí bảo hiểm (Trước VAT)". KHÔNG ĐƯỢC lấy phí của từng mục riêng lẻ (1) hay (2).
+- VAT: BẮT BUỘC lấy chính xác số tiền từ dòng "VAT:" hoặc "Thuế giá trị gia tăng".
+- Tong_phi_bao_hiem_da_VAT: BẮT BUỘC lấy chính xác số tiền từ dòng "Tổng phí bảo hiểm thanh toán (gồm VAT):".
+- TUYỆT ĐỐI KHÔNG TỰ TÍNH TOÁN, KHÔNG TỰ LÀM TRÒN SỐ, KHÔNG BỎ HOẶC THÊM CHỮ SỐ. Hãy chép chính xác chữ số ghi trên tài liệu.
+\nFilename Context: "${utf8Name}"
 `;
 
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.5-flash",
 
             contents: [
                 {
