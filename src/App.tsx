@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Copy, Upload, FileType, CheckCircle, XCircle, Loader2, Download, AlertCircle, Link as LinkIcon, Sparkles, RefreshCw, Trash2, Edit3, Check, FileWarning, Settings } from "lucide-react";
+import { Copy, Upload, FileType, CheckCircle, XCircle, Loader2, Download, AlertCircle, Link as LinkIcon, Sparkles, RefreshCw, Trash2, Edit3, Check, FileWarning, Settings, FileDown } from "lucide-react";
 import * as xlsx from "xlsx";
+import JSZip from "jszip";
 import { type InsuranceRecord, type ColumnItem } from "./types";
 import { ConfigModal } from "./components/ConfigModal";
 
@@ -39,6 +40,8 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<InsuranceRecord>>({});
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   // Column configuration with localStorage persistence
   const [columns, setColumns] = useState<ColumnItem[]>(() => {
@@ -336,6 +339,94 @@ export default function App() {
     xlsx.writeFile(workbook, "Bang_Ke_Thong_Tin_Bao_Hiem.xlsx");
   };
 
+  const downloadAllPdfs = async () => {
+    const validRecords = records.filter((r) => r.status === "success" || r.file || r.url);
+    if (validRecords.length === 0) return;
+
+    setIsDownloadingPdf(true);
+    setDownloadProgress(0);
+
+    try {
+      const zip = new JSZip();
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const hh = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+
+      const folderName = `${dd}-${mm}-${yy} ${hh}-${min}-${ss}`;
+      const zipFolder = zip.folder(folderName)!;
+
+      const filenameCounts: Record<string, number> = {};
+
+      for (let i = 0; i < validRecords.length; i++) {
+        const r = validRecords[i];
+        setDownloadProgress(i + 1);
+
+        let pdfData: ArrayBuffer | null = null;
+
+        if (r.file) {
+          pdfData = await r.file.arrayBuffer();
+        } else if (r.url) {
+          try {
+            let res = await fetch(r.url);
+            if (!res.ok) {
+              res = await fetch(`/api/download-proxy?url=${encodeURIComponent(r.url)}`);
+            }
+            if (res.ok) {
+              pdfData = await res.arrayBuffer();
+            }
+          } catch (e) {
+            try {
+              const res = await fetch(`/api/download-proxy?url=${encodeURIComponent(r.url)}`);
+              if (res.ok) {
+                pdfData = await res.arrayBuffer();
+              }
+            } catch (err) {}
+          }
+        }
+
+        if (pdfData) {
+          let baseName = (r.Ghi_chu || "").trim();
+          if (!baseName) {
+            baseName = (r.Bien_kiem_soat || r.originalFilename || "document").replace(/\.pdf$/i, "").trim();
+          }
+
+          // Clean invalid filename characters
+          baseName = baseName.replace(/[\\/:*?"<>|]/g, "_");
+
+          let fileName: string;
+          if (!filenameCounts[baseName]) {
+            filenameCounts[baseName] = 1;
+            fileName = `${baseName}.pdf`;
+          } else {
+            filenameCounts[baseName] += 1;
+            fileName = `${baseName} (${filenameCounts[baseName]}).pdf`;
+          }
+
+          zipFolder.file(fileName, pdfData);
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const downloadUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${folderName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error: any) {
+      alert("Có lỗi xảy ra khi tải toàn bộ PDF: " + (error.message || "Không xác định"));
+    } finally {
+      setIsDownloadingPdf(false);
+      setDownloadProgress(0);
+    }
+  };
+
   const clearRecords = () => {
     setRecords([]);
   };
@@ -551,9 +642,24 @@ export default function App() {
                   Hiển thị các cột đang bật trong cấu hình ({enabledColumns.length} cột). Nhấp nút sửa để chỉnh sửa trước khi xuất Excel.
                 </p>
               </div>
-              <span className="text-xs text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
-                Thành công: <span className="text-green-600 font-bold">{successCount}</span> | Lỗi: <span className="text-red-600 font-bold">{errorCount}</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
+                  Thành công: <span className="text-green-600 font-bold">{successCount}</span> | Lỗi: <span className="text-red-600 font-bold">{errorCount}</span>
+                </span>
+                <button
+                  onClick={downloadAllPdfs}
+                  disabled={isDownloadingPdf || completedCount === 0}
+                  title="Chuyển toàn bộ link thành PDF"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  {isDownloadingPdf ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FileDown className="w-3.5 h-3.5" />
+                  )}
+                  {isDownloadingPdf ? `Đang tải (${downloadProgress}/${completedCount})...` : "Tải PDF"}
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
