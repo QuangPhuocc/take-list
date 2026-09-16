@@ -71,7 +71,7 @@ const responseSchema: Schema = {
     Phi_bao_hiem_chua_VAT: { type: Type.STRING, description: "Phí bảo hiểm chưa VAT (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)'." },
     VAT: { type: Type.STRING, description: "VAT (số), bắt buộc lấy từ dòng 'VAT:'." },
     Tong_phi_bao_hiem_da_VAT: { type: Type.STRING, description: "Tổng phí bảo hiểm đã VAT / thanh toán (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm thanh toán (gồm VAT)'." },
-    Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Nếu tên file có chữ 'HUỶ' thì là 'HUỶ', ngược lại để trống." },
+    Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Kiểm tra mộc đỏ/chữ in chéo mờ trên tất cả các trang của PDF/ảnh (ví dụ 'ĐÃ SỬA ĐỔI', 'ĐÃ HỦY BỎ', 'ĐÃ HỦY') hoặc tên file/văn bản kèm theo: Nếu có 'ĐÃ SỬA ĐỔI' -> 'ĐÃ SỬA ĐỔI'; nếu có 'ĐÃ HỦY BỎ' hoặc 'ĐÃ HỦY' hoặc chữ 'HUỶ' -> 'HUỶ'; nếu không có dấu/chữ đặc biệt thì để trống." },
     Ghi_chu: { type: Type.STRING, description: "Ghi chú, bắt buộc trích xuất phần chữ đi kèm trong văn bản đính kèm sau biển số xe (ví dụ 'YÊN GL' từ '15K77720 YÊN GL', hoặc 'PHƯỚC TGBH' từ '65H07081 PHƯỚC TGBH'). Nếu không có chữ đính kèm thì để trống." },
   },
   required: ["GCN_TNDS", "Ten_chu_xe", "Bien_kiem_soat", "Ngay_cap", "Phi_bao_hiem_chua_VAT", "VAT", "Tong_phi_bao_hiem_da_VAT", "Trang_thai", "Ghi_chu"]
@@ -115,8 +115,13 @@ function validateFees(chuaVat: string, vat: string, daVat: string): string | und
 
 const promptInstructions = `Analyze this insurance document and extract the required fields with extreme accuracy.
 
+Rules for "Trạng thái" (CỰC KỲ QUAN TRỌNG - Kiểm tra tất cả các trang PDF và văn bản đính kèm):
+- Hãy soi kỹ tất cả các trang của tài liệu (đặc biệt là trang 2 của PDF nơi có chứng nhận):
+  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ SỬA ĐỔI" -> Trạng thái BẮT BUỘC = "ĐÃ SỬA ĐỔI".
+  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ HỦY BỎ" hoặc "ĐÃ HỦY" hoặc tên file/văn bản kèm theo có chữ "HUỶ"/"HỦY" -> Trạng thái BẮT BUỘC = "HUỶ".
+  * Nếu chứng nhận bình thường, không có con dấu hủy hay sửa đổi -> Trạng thái = "".
+
 Rules for context & filename extraction:
-- Trạng thái: Lấy từ văn bản đính kèm/tên file. Nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
 - Biển kiểm soát & Ghi chú (CỰC KỲ QUAN TRỌNG):
   * Văn bản đính kèm có chứa Biển số xe và Ghi chú (ví dụ: "15K77720 YÊN GL", "65H07081 PHƯỚC TGBH", hoặc "HUỶ 12A11216 THƯƠNG TGBH").
   * Bạn BẮT BUỘC phải phân tách chính xác:

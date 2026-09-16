@@ -103,8 +103,13 @@ export default async function handler(req: any, res: any) {
 
         const prompt = `Analyze this insurance document and extract the required fields with extreme accuracy.
 
+Rules for "Trạng thái" (CỰC KỲ QUAN TRỌNG - Kiểm tra tất cả các trang PDF và văn bản đính kèm):
+- Hãy soi kỹ tất cả các trang của tài liệu (đặc biệt là trang 2 của PDF nơi có chứng nhận):
+  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ SỬA ĐỔI" -> Trạng thái BẮT BUỘC = "ĐÃ SỬA ĐỔI".
+  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ HỦY BỎ" hoặc "ĐÃ HỦY" hoặc tên file/văn bản kèm theo có chữ "HUỶ"/"HỦY" -> Trạng thái BẮT BUỘC = "HUỶ".
+  * Nếu chứng nhận bình thường, không có con dấu hủy hay sửa đổi -> Trạng thái = "".
+
 Rules for context & filename extraction:
-- Trạng thái: Lấy từ tên file/văn bản kèm theo. Nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
 - Biển kiểm soát & Ghi chú:
   * Nếu văn bản kèm theo chứa biển kiểm soát (ví dụ "15K77720 YÊN GL" hoặc "HUỶ 12A11216 THƯƠNG TGBH"):
     - Biển kiểm soát: Ưu tiên biển số trong văn bản kèm theo (ví dụ: "15K77720" hoặc "12A11216") nếu trên chứng nhận khó đọc.
@@ -161,7 +166,7 @@ QUY TẮC BẮT BUỘC VỀ PHÍ BẢO HIỂM (Cực kỳ quan trọng - Copy ch
                         Phi_bao_hiem_chua_VAT: { type: Type.STRING, description: "Phí bảo hiểm chưa VAT (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm (Trước VAT):(1)+(2)+(3)+(4)'." },
                         VAT: { type: Type.STRING, description: "VAT (số), bắt buộc lấy từ dòng 'VAT:'." },
                         Tong_phi_bao_hiem_da_VAT: { type: Type.STRING, description: "Tổng phí bảo hiểm đã VAT / thanh toán (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm thanh toán (gồm VAT)'." },
-                        Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Nếu tên file có chữ 'HUỶ' thì là 'HUỶ', ngược lại để trống." },
+                        Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Kiểm tra mộc đỏ/chữ in chéo mờ trên tất cả các trang của PDF/ảnh (ví dụ 'ĐÃ SỬA ĐỔI', 'ĐÃ HỦY BỎ', 'ĐÃ HỦY') hoặc tên file/văn bản kèm theo: Nếu có 'ĐÃ SỬA ĐỔI' -> 'ĐÃ SỬA ĐỔI'; nếu có 'ĐÃ HỦY BỎ' hoặc 'ĐÃ HỦY' hoặc chữ 'HUỶ' -> 'HUỶ'; nếu không có dấu/chữ đặc biệt thì để trống." },
                         Ghi_chu: { type: Type.STRING, description: "Ghi chú, thường nằm sau biển kiểm soát trong tên file. Nếu tên file không rõ ràng thì lưu toàn bộ tên file vào đây." },
                     },
 

@@ -632,7 +632,11 @@ export default function App() {
                             />
                           ) : (
                             r.Trang_thai && (
-                              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">
+                              <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${
+                                r.Trang_thai.includes("SỬA")
+                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                  : "bg-rose-100 text-rose-700 border border-rose-300"
+                              }`}>
                                 {r.Trang_thai}
                               </span>
                             )
