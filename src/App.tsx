@@ -14,20 +14,45 @@ export default function App() {
 
   const isProcessing = records.some(r => r.status === "pending" || r.status === "processing");
 
-  // Parse lines from textarea into array of non-empty string lines containing URLs
-  const parsedUrlLines = urlInput
-    .split("\n")
-    .map(line => line.trim())
-    .filter(line => line.length > 0 && /(https?:\/\/[^\s]+)/i.test(line));
+  // Helper to parse multi-line text input into URL blocks with associated context text (even if on the next line)
+  const parseUrlBlocks = (rawText: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const matches = Array.from(rawText.matchAll(urlRegex));
+    
+    if (matches.length === 0) return [];
 
-  // Process batch of URL lines
+    const items: { url: string; extraContext: string; combinedLine: string; filename: string }[] = [];
+
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const url = match[0];
+      const matchIndex = match.index!;
+      const urlEndIndex = matchIndex + url.length;
+      
+      const nextUrlIndex = (i + 1 < matches.length) ? matches[i + 1].index! : rawText.length;
+      const textSegment = rawText.slice(urlEndIndex, nextUrlIndex);
+      
+      const extraContext = textSegment.replace(/[\r\n]+/g, " ").trim();
+      const combinedLine = extraContext ? `${url} ${extraContext}` : url;
+      
+      let filename = url.split("/").pop()?.split("?")[0] || "pdf-document.pdf";
+      if (extraContext) {
+        filename = `${filename} (${extraContext})`;
+      }
+
+      items.push({ url, extraContext, combinedLine, filename });
+    }
+
+    return items;
+  };
+
+  const parsedUrlBlocks = parseUrlBlocks(urlInput);
+
+  // Process batch of URL blocks
   const handleProcessUrls = () => {
-    if (parsedUrlLines.length === 0) return;
+    if (parsedUrlBlocks.length === 0) return;
 
-    const newRecords: InsuranceRecord[] = parsedUrlLines.map((line) => {
-      const urlMatch = line.match(/(https?:\/\/[^\s]+)/i);
-      const url = urlMatch ? urlMatch[1] : "";
-      const filename = url.split("/").pop()?.split("?")[0] || "pdf-document.pdf";
+    const newRecords: InsuranceRecord[] = parsedUrlBlocks.map((block) => {
       return {
         id: crypto.randomUUID(),
         GCN_TNDS: "",
@@ -39,9 +64,9 @@ export default function App() {
         Tong_phi_bao_hiem_da_VAT: "",
         Trang_thai: "",
         Ghi_chu: "",
-        originalFilename: filename,
-        url,
-        inputLine: line,
+        originalFilename: block.filename,
+        url: block.url,
+        inputLine: block.combinedLine,
         status: "pending" as const,
       };
     });
@@ -248,7 +273,7 @@ export default function App() {
   // Sample data button for instant testing
   const loadSampleUrl = () => {
     setUrlInput(
-      "https://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB/TNDS2609-409586-37113.pdf 15K77720 YÊN GL"
+      `https://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB/TNDS2609-409586-37113.pdf\n15K77720 YÊN GL\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB_FLAT/TNDS2609-233673-57793.pdf\n65H07081 PHƯỚC TGBH`
     );
   };
 
@@ -356,15 +381,15 @@ export default function App() {
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-1">
                 <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                  Số lượng link hợp lệ phát hiện: <strong className="text-blue-600">{parsedUrlLines.length}</strong> link
+                  Số lượng link hợp lệ phát hiện: <strong className="text-blue-600">{parsedUrlBlocks.length}</strong> link
                 </span>
                 <button
                   onClick={handleProcessUrls}
-                  disabled={parsedUrlLines.length === 0 || isProcessing}
+                  disabled={parsedUrlBlocks.length === 0 || isProcessing}
                   className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm transition-all"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Đọc thông tin tất cả link ({parsedUrlLines.length})
+                  Đọc thông tin tất cả link ({parsedUrlBlocks.length})
                 </button>
               </div>
             </div>

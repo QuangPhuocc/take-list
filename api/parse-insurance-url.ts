@@ -80,7 +80,7 @@ const responseSchema = {
     VAT: { type: Type.STRING, description: "VAT (số), bắt buộc lấy từ dòng 'VAT:'." },
     Tong_phi_bao_hiem_da_VAT: { type: Type.STRING, description: "Tổng phí bảo hiểm đã VAT / thanh toán (số), bắt buộc lấy từ dòng 'Tổng phí bảo hiểm thanh toán (gồm VAT)'." },
     Trang_thai: { type: Type.STRING, description: "Trạng thái thẻ. Nếu tên file có chữ 'HUỶ' thì là 'HUỶ', ngược lại để trống." },
-    Ghi_chu: { type: Type.STRING, description: "Ghi chú, thường nằm sau biển kiểm soát trong tên file. Nếu tên file không rõ ràng thì lưu toàn bộ tên file vào đây." },
+    Ghi_chu: { type: Type.STRING, description: "Ghi chú, bắt buộc trích xuất phần chữ đi kèm trong văn bản đính kèm sau biển số xe (ví dụ 'YÊN GL' từ '15K77720 YÊN GL', hoặc 'PHƯỚC TGBH' từ '65H07081 PHƯỚC TGBH'). Nếu không có chữ đính kèm thì để trống." },
   },
   required: [
     "GCN_TNDS",
@@ -98,12 +98,13 @@ const responseSchema = {
 const promptInstructions = `Analyze this insurance document and extract the required fields with extreme accuracy.
 
 Rules for context & filename extraction:
-- Trạng thái: Lấy từ tên file/văn bản kèm theo. Nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
-- Biển kiểm soát & Ghi chú:
-  * Nếu văn bản kèm theo chứa biển kiểm soát (ví dụ "15K77720 YÊN GL" hoặc "HUỶ 12A11216 THƯƠNG TGBH"):
-    - Biển kiểm soát: Ưu tiên biển số trong văn bản kèm theo (ví dụ: "15K77720" hoặc "12A11216") nếu trên chứng nhận khó đọc.
-    - Ghi chú: Phần thông tin còn lại trong văn bản (ví dụ: "YÊN GL" hoặc "THƯƠNG TGBH").
-  * Nếu văn bản không rõ ràng, lưu toàn bộ văn bản đính kèm vào Ghi chú.
+- Trạng thái: Lấy từ văn bản đính kèm/tên file. Nếu có chữ "HUỶ" -> "HUỶ". Nếu không -> "".
+- Biển kiểm soát & Ghi chú (CỰC KỲ QUAN TRỌNG):
+  * Văn bản đính kèm có chứa Biển số xe và Ghi chú (ví dụ: "15K77720 YÊN GL", "65H07081 PHƯỚC TGBH", hoặc "HUỶ 12A11216 THƯƠNG TGBH").
+  * Bạn BẮT BUỘC phải phân tách chính xác:
+    - Biển kiểm soát: Lấy phần biển số (ví dụ: "15K77720", "65H07081").
+    - Ghi chú: Lấy toàn bộ phần chữ còn lại trong văn bản đính kèm (ví dụ: "YÊN GL", "PHƯỚC TGBH", "THƯƠNG TGBH").
+  * Tuyệt đối không bỏ qua thông tin Ghi chú này.
 
 Rules for document extraction:
 - GCN_TNDS: Số seri (thường nằm trên cùng, ví dụ: TNDS2606/632467)
@@ -136,7 +137,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ success: false, error: "Không tìm thấy đường link hợp lệ trong văn bản" });
     }
 
-    const { url, filename } = parsed;
+    const { url, extraContext, filename } = parsed;
 
     // Fetch PDF from remote URL with User-Agent header
     const pdfResponse = await fetch(url, {
@@ -155,7 +156,7 @@ export default async function handler(req: any, res: any) {
     const base64Data = buffer.toString("base64");
     const mimeType = pdfResponse.headers.get("content-type") || "application/pdf";
 
-    const prompt = `${promptInstructions}\nFilename Context: "${filename}"\nURL: "${url}"`;
+    const prompt = `${promptInstructions}\nVăn bản đính kèm kèm theo link: "${extraContext || filename}"\nURL: "${url}"`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
