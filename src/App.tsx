@@ -414,9 +414,9 @@ export default function App() {
               <div className="mx-auto w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <Upload className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-semibold text-slate-800">Kéo thả file vào đây</h3>
+              <h3 className="text-base font-semibold text-slate-800">Kéo thả file hoặc ảnh vào đây</h3>
               <p className="text-xs text-slate-500 mt-1">
-                hoặc click để chọn file từ máy tính (PDF, JPG, PNG)
+                Lưu tên file theo dạng [Biển số + NGƯỜI CẤP] để xuất ra ghi chú
               </p>
             </div>
           )}
