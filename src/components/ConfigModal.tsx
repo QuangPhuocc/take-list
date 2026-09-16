@@ -33,7 +33,7 @@ const SAMPLE_DATA_ROWS: Record<string, string>[] = [
     Phi_bao_hiem_chua_VAT: "3,214,000",
     VAT: "305,400",
     Tong_phi_bao_hiem_da_VAT: "3,519,400",
-    Trang_thai: "Đã sửa đổi",
+    Trang_thai: "",
     Ghi_chu: "PHƯỚC TGBH",
   },
   {

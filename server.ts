@@ -121,11 +121,16 @@ function validateFees(chuaVat: string, vat: string, daVat: string): string | und
 
 const promptInstructions = `Analyze this insurance document and extract all 22 required fields with extreme accuracy.
 
+QUY TẮC TUYỆT ĐỐI CHỐNG SUY ĐOÁN (ABSOLUTE ANTI-HALLUCINATION REQUIREMENT):
+- CHỈ trích xuất thông tin xuất hiện TRỰC TIẾP trong văn bản/hình ảnh PDF hoặc văn bản đính kèm.
+- TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ SUY ĐOÁN, KHÔNG ĐOÁN MÒ, KHÔNG TỰ BỊA RA THÔNG TIN KHÔNG CÓ TRONG TÀI LIỆU.
+- Nếu trường thông tin nào không xuất hiện trong tài liệu, BẮT BUỘC để rỗng ("").
+
 Rules for "Trạng thái" (CỰC KỲ QUAN TRỌNG - Kiểm tra tất cả các trang PDF và văn bản đính kèm):
-- Soi kỹ tất cả các trang của tài liệu (đặc biệt là trang 2 nơi có chứng nhận):
-  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ SỬA ĐỔI" -> Trạng thái BẮT BUỘC = "ĐÃ SỬA ĐỔI".
-  * Nếu trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ HỦY BỎ" hoặc "ĐÃ HỦY" hoặc tên file/văn bản kèm theo có chữ "HUỶ"/"HỦY" -> Trạng thái BẮT BUỘC = "HUỶ".
-  * Nếu chứng nhận bình thường, không có con dấu hủy hay sửa đổi -> Trạng thái = "".
+- Soi kỹ tất cả các trang của tài liệu (đặc biệt là trang 2 nơi có chứng nhận) và tên file/văn bản đính kèm:
+  * NẾU VÀ CHỈ NẾU trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ SỬA ĐỔI" hoặc phụ lục sửa đổi -> Trạng thái BẮT BUỘC = "ĐÃ SỬA ĐỔI".
+  * NẾU VÀ CHỈ NẾU trên trang có con dấu mộc đỏ/chữ in nghiêng chéo "ĐÃ HỦY BỎ" hoặc "ĐÃ HỦY" hoặc tên file/văn bản kèm theo có chữ "HUỶ"/"HỦY" -> Trạng thái BẮT BUỘC = "HUỶ".
+  * Nếu là thẻ chứng nhận bảo hiểm bình thường, không có dấu mộc/chữ hủy hay sửa đổi -> Trạng thái BẮT BUỘC = "" (chuỗi rỗng). TUYỆT ĐỐI KHÔNG TỰ ĐOÁN "Đã sửa đổi" hay "Đã hủy".
 
 Rules for context & filename extraction:
 - Biển kiểm soát & Ghi chú (CỰC KỲ QUAN TRỌNG):
