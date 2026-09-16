@@ -389,13 +389,22 @@ export default function App() {
         }
 
         if (pdfData) {
-          let baseName = (r.Ghi_chu || "").trim();
-          if (!baseName) {
-            baseName = (r.Bien_kiem_soat || r.originalFilename || "document").replace(/\.pdf$/i, "").trim();
+          let bks = (r.Bien_kiem_soat || "").trim();
+          let ghiChu = (r.Ghi_chu || "").trim();
+
+          let baseName = "";
+          if (bks && ghiChu) {
+            baseName = `${bks} ${ghiChu}`;
+          } else if (bks) {
+            baseName = bks;
+          } else if (ghiChu) {
+            baseName = ghiChu;
+          } else {
+            baseName = (r.originalFilename || "document").replace(/\.pdf$/i, "").trim();
           }
 
           // Clean invalid filename characters
-          baseName = baseName.replace(/[\\/:*?"<>|]/g, "_");
+          baseName = baseName.replace(/[\\/:*?"<>|]/g, "_").trim();
 
           let fileName: string;
           if (!filenameCounts[baseName]) {
@@ -667,7 +676,6 @@ export default function App() {
                 <thead className="text-xs text-slate-700 uppercase bg-slate-100 border-b border-slate-200">
                   <tr>
                     <th scope="col" className="px-4 py-3">STT</th>
-                    <th scope="col" className="px-4 py-3">Tên file / Link</th>
                     {enabledColumns.map((col) => (
                       <th key={col.key} scope="col" className="px-4 py-3">
                         {col.label}
@@ -682,17 +690,14 @@ export default function App() {
 
                     return (
                       <tr key={r.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${r.feeWarning ? "bg-amber-50/40" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-slate-900">{i + 1}</td>
-                        
-                        {/* Filename / URL */}
-                        <td className="px-4 py-3 max-w-[180px] truncate" title={r.url || r.originalFilename}>
+                        <td className="px-4 py-3 font-medium text-slate-900" title={r.url || r.originalFilename}>
                           <div className="flex items-center gap-2">
                             {r.status === 'pending' && <AlertCircle className="w-4 h-4 text-slate-400" />}
                             {r.status === 'processing' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
                             {r.status === 'success' && !r.feeWarning && <CheckCircle className="w-4 h-4 text-green-500" />}
                             {r.status === 'success' && r.feeWarning && <FileWarning className="w-4 h-4 text-amber-500" title={r.feeWarning} />}
                             {r.status === 'error' && <XCircle className="w-4 h-4 text-red-500" title={r.errorMessage} />}
-                            <span className="truncate">{r.originalFilename}</span>
+                            <span>{i + 1}</span>
                           </div>
                         </td>
 
