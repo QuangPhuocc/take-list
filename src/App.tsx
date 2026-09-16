@@ -373,13 +373,10 @@ export default function App() {
         <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V3</h1>
-              <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                Hỗ trợ 22 trường & Cấu hình Excel tùy chỉnh
-              </span>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V4</h1>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
-              Trích xuất toàn bộ thông tin Giấy chứng nhận bảo hiểm & tùy chỉnh các cột xuất Excel
+            <p className="inline-block mt-2 px-3 py-1.5 bg-blue-50 text-blue-700 font-bold border border-blue-200 rounded-lg text-sm shadow-sm">
+              Kê nhanh thông tin thẻ bảo hiểm. Có thể có sai sót, vui lòng DOUBLE CHECK
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
