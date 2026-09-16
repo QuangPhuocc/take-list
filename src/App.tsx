@@ -302,7 +302,7 @@ export default function App() {
         <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V2</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-800">KÊ THẺ TASCO V3</h1>
               <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
                 Hỗ trợ URL PDF hàng loạt (100+ link)
               </span>
