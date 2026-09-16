@@ -361,8 +361,7 @@ export default function App() {
           {/* TAB 1: URL Input (DEFAULT) */}
           {activeTab === "url" && (
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs text-slate-500">
-                <span>Dán danh sách các đường link PDF vào đây</span>
+              <div className="flex justify-end items-center text-xs text-slate-500">
                 <button
                   onClick={loadSampleUrl}
                   className="text-blue-600 font-medium hover:underline flex items-center gap-1"
@@ -374,7 +373,7 @@ export default function App() {
               <textarea
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder={`Dán danh sách link PDF vào đây (có thể dán 100 link liên tiếp, mỗi link 1 dòng):\nhttps://s3-han02.fptcloud.com/core-insurance-2/policy/certification/MOTOR_CERTIFICATE_TNDS_BB/TNDS2609-409586-37113.pdf 15K77720 YÊN GL\nhttps://example.com/don-bao-hiem-2.pdf 51D93485 PHƯỚC`}
+                placeholder="Dán danh sách các đường link PDF vào đây"
                 rows={7}
                 className="w-full p-3.5 font-mono text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y shadow-inner"
               />
